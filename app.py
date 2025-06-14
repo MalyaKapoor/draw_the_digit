@@ -1,30 +1,46 @@
+# app.py
 import streamlit as st
 import numpy as np
-import pandas as pd
 import pickle
 from PIL import Image, ImageOps
+from streamlit_drawable_canvas import st_canvas
 
-# Load the model
-model = pickle.load(open("model.pkl", "rb"))
+# Load the trained model
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-st.title("🖌️ Draw the Digit - Digit Recognizer")
+st.title("✍️ Draw a Digit - Digit Recognizer")
+st.markdown("Draw a digit (0–9) in the box below and click **Predict** to see the result.")
 
-# Upload or draw
-canvas_result = st.canvas(
-    fill_color="black",
-    stroke_width=10,
-    stroke_color="white",
-    background_color="black",
+# Create a canvas for drawing digits
+canvas_result = st_canvas(
+    fill_color="#000000",
+    stroke_width=20,
+    stroke_color="#FFFFFF",
+    background_color="#000000",
     height=280,
     width=280,
     drawing_mode="freedraw",
-    key="canvas"
+    key="canvas",
 )
 
-if canvas_result.image_data is not None:
-    img = Image.fromarray((canvas_result.image_data[:, :, 0]).astype('uint8'), 'L')
-    img = ImageOps.invert(img)
-    img = img.resize((28, 28))
-    img_array = np.array(img).reshape(1, -1) / 255.0
-    prediction = model.predict(img_array)
-    st.subheader(f"Prediction: {prediction[0]}")
+# Prediction button
+if st.button("Predict"):
+    if canvas_result.image_data is not None:
+        img = canvas_result.image_data
+
+        # Preprocess the image
+        img = Image.fromarray((255 - img[:, :, 0]).astype(np.uint8))  # Convert to grayscale
+        img = ImageOps.fit(img, (8, 8), method=0, bleed=0.0, centering=(0.5, 0.5))
+        img = np.array(img).astype(np.float64)
+        img = img.reshape(1, -1)
+
+        # Scale to match digits dataset scale (0–16)
+        img = (img / 255.0) * 16
+
+        # Predict
+        prediction = model.predict(img)[0]
+        st.success(f"🔢 Predicted Digit: **{prediction}**")
+    else:
+        st.warning("Please draw a digit first.")
+
