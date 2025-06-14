@@ -1,22 +1,22 @@
-# train_model.py
+# train_and_save_model.py
 import pickle
 from sklearn.datasets import load_digits
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
 # Load dataset
 digits = load_digits()
 X, y = digits.data, digits.target
 
 # Train/test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 # Train model
 model = LogisticRegression(max_iter=10000)
 model.fit(X_train, y_train)
 
-# Save model
+# Save the model
 with open("model.pkl", "wb") as f:
     pickle.dump(model, f)
 
-print("✅ model.pkl saved")
+print("✅ Model saved successfully.")
