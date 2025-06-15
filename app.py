@@ -1,46 +1,44 @@
-# app.py
 import streamlit as st
 import numpy as np
-import pickle
 from PIL import Image, ImageOps
+import tensorflow as tf
 from streamlit_drawable_canvas import st_canvas
 
-# Load the trained model
-with open("model.pkl", "rb") as f:
-    model = pickle.load(f)
+# Load trained model
+model = tf.keras.models.load_model("model.h5")
 
-st.title("✍️ Draw a Digit - Digit Recognizer")
-st.markdown("Draw a digit (0–9) in the box below and click **Predict** to see the result.")
+# Page config
+st.set_page_config(page_title="Draw a Digit (0–9)", layout="centered")
+st.title("🎨 Draw a Digit (0–9)")
+st.markdown("Draw a digit, and the model will predict what you drew!")
 
-# Create a canvas for drawing digits
+# Canvas for drawing
 canvas_result = st_canvas(
-    fill_color="#000000",
-    stroke_width=20,
-    stroke_color="#FFFFFF",
-    background_color="#000000",
+    fill_color="black",
+    stroke_width=15,
+    stroke_color="white",
+    background_color="black",
     height=280,
     width=280,
     drawing_mode="freedraw",
     key="canvas",
 )
 
-# Prediction button
-if st.button("Predict"):
-    if canvas_result.image_data is not None:
-        img = canvas_result.image_data
+# Process and predict
+if canvas_result.image_data is not None:
+    img = canvas_result.image_data
+    img = Image.fromarray(np.uint8(img)).convert("L")  # grayscale
+    img = ImageOps.invert(img)  # white digit on black background
+    img = img.resize((28, 28))
+    img = np.array(img).reshape(1, 28, 28, 1) / 255.0  # normalize
 
-        # Preprocess the image
-        img = Image.fromarray((255 - img[:, :, 0]).astype(np.uint8))  # Convert to grayscale
-        img = ImageOps.fit(img, (8, 8), method=0, bleed=0.0, centering=(0.5, 0.5))
-        img = np.array(img).astype(np.float64)
-        img = img.reshape(1, -1)
+    if np.sum(img) > 10:  # make sure something was drawn
+        pred = model.predict(img)
+        predicted_class = np.argmax(pred)
+        confidence = np.max(pred) * 100
 
-        # Scale to match digits dataset scale (0–16)
-        img = (img / 255.0) * 16
-
-        # Predict
-        prediction = model.predict(img)[0]
-        st.success(f"🔢 Predicted Digit: **{prediction}**")
+        st.subheader("📊 Prediction")
+        st.write(f"**Digit:** {predicted_class}")
+        st.write(f"**Confidence:** {confidence:.2f}%")
     else:
-        st.warning("Please draw a digit first.")
-
+        st.warning("🖌 Draw a digit to get prediction!")
